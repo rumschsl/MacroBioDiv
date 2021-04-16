@@ -1,0 +1,66 @@
+try <- dat %>% select(Year, CollectionDayOfYear, YearCont)
+
+try <- dat_all %>% select(SiteNumber, 
+                          Ecoregion_NARS, 
+                          Year, 
+                          alpha, 
+                          alpha.bar,
+                          gamma,
+                          beta)
+
+data(starwars)
+
+colnames(starwars)
+
+ggplot(data = dat_alpha_all,
+       aes(x = YearCont, y = alpha)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggplot(data = dat_div_all,
+       aes(x = Year, y = alpha.bar)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggplot(data = dat_div_all,
+       aes(x = Year, y = gamma)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggplot(data = dat_div_all,
+       aes(x = Year, y = mult.beta)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggplot(data = dat_div_all,
+       aes(x = Year, y = prop.beta)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+
+######## 3 or more
+
+ggplot(data = dat_alpha_3more,
+       aes(x = YearCont, y = alpha)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggplot(data = dat_div_3more,
+       aes(x = Year, y = alpha.bar)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggplot(data = dat_div_3more,
+       aes(x = Year, y = gamma)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggplot(data = dat_div_3more,
+       aes(x = Year, y = mult.beta)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggplot(data = dat_div_3more,
+       aes(x = Year, y = prop.beta)) +
+  geom_point() +
+  geom_smooth(method = "lm")
