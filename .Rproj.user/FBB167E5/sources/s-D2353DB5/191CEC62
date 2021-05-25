@@ -1,0 +1,33 @@
+{
+    "id": "191CEC62",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1621626579484.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "cacheKey": "475FCC65",
+        "caption": "dat_alpha_all",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=dat_alpha_all&cache_key=475FCC65",
+        "displayedObservations": 8035,
+        "environment": "",
+        "expression": "dat_alpha_all",
+        "object": "dat_alpha_all",
+        "preview": 0,
+        "totalObservations": 8035,
+        "variables": 918,
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 0,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1621626579484,
+    "read_only": false,
+    "read_only_alternatives": []
+}

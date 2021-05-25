@@ -1,0 +1,144 @@
+### stats for Melchiorre antibiotic/schisto study
+
+setwd('E:/A_in_arev/Hannah_Melchiorre')
+
+#test for differences in proportion of snails shedding in week 4
+res <- prop.test(x = c(1, 15), n = c(19, 27))
+res
+
+#and week 5
+res2 <- prop.test(x = c(20, 23), n = c(20, 24))
+res2
+
+#load in cercarial data
+byweek <- read.csv('byweek.csv')
+
+#data is overdispersed
+hist(byweek$cercs, breaks = 25)
+
+#visualize cercarial shedding by week and treatment.
+library("ggpubr")
+ggboxplot(byweek, x = 'week', y = 'cercs', color = 'treat', palette = c("#d1495b", "#edae49"), xlab = 'Week', font.x = 40,
+          font.y = 40, font.tickslab = 30, ylab = 'Average cercarial output', size = 1, width = 0.5, add = 'jitter', add.params = list(size = 2))
+
+#visualize proportion shedding in week 4
+H<- c(0.05, 0.56)
+barplot(H)
+par(mar=c(8.1, 5, 4.1, 2.1))
+barplot(H, xlab = "Parasite       Antibiotic + parasite", ylab = "Proportion of hosts releasing cercariae", ylim = c(0,1), cex.axis = 2, cex.lab= 2,
+         col = c("#d1495b", "#edae49"))
+
+#for reproducibility
+set.seed(123)
+
+#import snail fecundity data
+egg.week <- read.csv('egg.byweek.csv')
+
+#data is overdispersed
+hist(egg.week$eggs, breaks = 15)
+
+#ap, edae49
+#p, d1495b
+#a, 00798c
+#c, 66a182
+
+#solution using zero-inflated model of cercarial output
+library(glmmTMB)
+fit_zipoisson1 <- glmmTMB(cercs ~ treat * week + (1|ID), data = byweek, ziformula=~1, family=poisson)
+summary(fit_zipoisson1)
+
+#examine various distributions for the best fitting model
+fit_hzip <- update(fit_zipoisson1,
+                   ziformula = ~.,
+                   data = byweek,
+                   family = poisson(link="log"))
+fit_zinbinom2 <- update(fit_hzip, family=nbinom2)
+fit_zinbinom1 <- update(fit_hzip, family=nbinom1)
+fit_hnbinom2 <- update(fit_zinbinom1,family=list(family="truncated_nbinom1",link="log"))
+
+library(bbmle)
+AICtab(fit_zipoisson1,fit_hzip, fit_zinbinom2, fit_zinbinom1, fit_hnbinom2)
+#use best fitting model
+summary(fit_zinbinom1)
+
+#create subsets for fecundity data comparisons
+#create data for antibiotic + parasite vs parasite
+p <- subset(egg.week, treat == "1p")
+ap <- subset(egg.week, treat == "a1p")
+
+p.ap4 <- subset(p.ap, week <= 4)
+p.ap5 <- subset(p.ap, week >= 5)
+
+
+dim(p)
+dim(ap)
+p.ap <- rbind(p, ap)
+dim(p.ap)
+
+p.ap3 <- subset(p.ap, week <= 3)
+p.ap4 <- subset(p.ap, week >= 4)
+
+#fecundity in parasite vs antibiotic + parasite for all weeks
+fit_zipoisson3 <- glmmTMB(eggs ~ treat * week + (1|Group), data = p.ap, ziformula=~1, family=poisson)
+summary(fit_zipoisson3)
+
+#examine other distributions
+fit_hzip <- update(fit_zipoisson3,
+                   ziformula = ~.,
+                   data = p.ap,
+                   family = poisson(link="log"))
+fit_zinbinom2 <- update(fit_hzip, family=nbinom2)
+fit_zinbinom1 <- update(fit_hzip, family=nbinom1)
+fit_hnbinom2 <- update(fit_zinbinom1, family=list(family="truncated_nbinom1",link="log"))
+AICtab(fit_zipoisson3,fit_hzip, fit_zinbinom2, fit_zinbinom1, fit_hnbinom2)
+#best fitting model
+summary(fit_hnbinom2)
+
+#examine trends in fecundity compensation window
+egg.pap <- ggplot(p.ap3, aes(x = as.factor(week), y = eggs, fill = treat)) + 
+  geom_violin(trim = T) +
+  labs(x="Week", y = "Egg masses", hjust=10)
+
+egg.pap  +
+  scale_fill_manual(values=c("#d1495b", "#edae49")) + theme_classic() +
+  theme(text = element_text(size=40, color = 'black'), legend.title=element_blank())
+
+#ap, edae49
+#p, d1495b
+#a, 8d96a3
+#c, 66a182
+
+#create data for antibiotic vs control
+c <- subset(egg.week, treat == "0c")
+a <- subset(egg.week, treat == "a")
+
+dim(c)
+dim(a)
+c.a <- rbind(c, a)
+dim(c.a)
+
+#antibiotic vs control for all weeks
+fit_zipoisson4 <- glmmTMB(eggs ~ treat + week + (1|Group), data = c.a, ziformula=~1, family=poisson)
+summary(fit_zipoisson4)
+
+#examine other distirbutions
+fit_hzip <- update(fit_zipoisson4,
+                   ziformula = ~.,
+                   data = c.a,
+                   family = poisson(link="log"))
+fit_zinbinom2 <- update(fit_hzip, family=nbinom2)
+fit_zinbinom1 <- update(fit_hzip, family=nbinom1)
+fit_hnbinom2 <- update(fit_hzip, family=list(family="truncated_nbinom2",link="log"))
+AICtab(fit_zipoisson4,fit_hzip, fit_zinbinom2, fit_zinbinom1, fit_hnbinom2)
+#best fitting model with successful convergence
+summary(fit_hnbinom2)
+
+#visualize control versus antibiotic fecundity
+egg.ca <- ggplot(c.a, aes(x = as.factor(week), y = eggs, fill = treat)) + 
+  geom_violin(trim = T) +
+  labs(x="Week", y = "Egg masses", hjust=10) +
+  theme(text = element_text(size=50),
+        axis.text.x = element_text(angle=90, hjust=1))
+egg.ca +
+  scale_fill_manual(values=c('#00B81F','#00BFC4')) + theme_classic() +
+  theme(text = element_text(size=40), legend.title=element_blank())

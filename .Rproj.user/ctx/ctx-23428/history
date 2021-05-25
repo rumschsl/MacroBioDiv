@@ -1,0 +1,512 @@
+))
+}
+# generate gammas via rarefication and asymptotic estimation
+x_NRSA <- iNEXT(er_yr_list_NRSA, q= 0, datatype = "incidence_raw",
+size = c(0,min(dat_alpha_NRSA$n.sites)))
+dat_asyp_gamma_NRSA <- x_NRSA$AsyEst %>%
+filter(Diversity == "Species richness") %>%
+select(EcoRegion_Year = Site,
+obs.gamma = Observed,
+asyp.gamma = Estimator,
+asyp.gamma.se = s.e.)
+dat_intrp_gamma_NRSA <- data.frame(EcoRegion_Year = rep(NA, nrow(dat_gamma_NRSA)),
+intrp.gamma = rep(NA, nrow(dat_gamma_NRSA)))
+for (i in 1:length(x_NRSA$iNextEst)) {
+dat_intrp_gamma_NRSA$EcoRegion_Year[i] = names(x_NRSA$iNextEst[i])
+dat_intrp_gamma_NRSA$intrp.gamma[i] = x_NRSA$iNextEst[[i]][2,4]
+}
+#join datasets and calculate multiplicative & proportional beta
+dat_div_NRSA <- dat_alpha.bar_NRSA %>%
+mutate(EcoRegion_Year = paste(Ecoregion_NARS,
+Year, sep = "_")) %>%
+left_join(dat_asyp_gamma_NRSA, by = "EcoRegion_Year") %>%
+left_join(dat_intrp_gamma_NRSA, by = "EcoRegion_Year") %>%
+left_join(dat_gamma_NRSA %>% select(-n.sites), by=c("Ecoregion_NARS", "Year")) %>%
+mutate(mult.beta.asyp = asyp.gamma/alpha.bar,
+prop.beta.asyp = 1 - (alpha.bar / asyp.gamma),
+mult.beta.intrp = intrp.gamma/alpha.bar,
+prop.beta.intrp = 1 - (alpha.bar / intrp.gamma)) %>%
+mutate(mult.beta = gamma/alpha.bar,
+prop.beta = 1 - (alpha.bar / gamma),
+norm.beta = (mult.beta - 1)/ (n.sites-1))
+#
+# calculate diversity metrics for only sites that are sampled in 3 or more years
+#
+# ALL SITES - both NAWQA & NRSA
+# calcualte diversity metrics with sites that are sampled in 3 or more years
+dat_alpha_all_3 <- dat_alpha_all %>%
+filter(n >= 3) %>%
+# remove EcoRegion - Year combos where only 1 site was measured
+mutate(EcoRegion_Year = paste(Ecoregion_NARS, Year, sep = "_"))
+dat_alpha_all_3 <- dat_alpha_all_3 %>%
+filter(EcoRegion_Year %in% (dat_alpha_all_3 %>%
+group_by(EcoRegion_Year) %>%
+summarize(n = n()) %>%
+ungroup() %>%
+filter(n > 1))$EcoRegion_Year)
+# remove EcoRegions that are only represented in one year across the dataset
+# count numer of observations within EcoRegion - Year combos
+# all ecoregions are measured in 7 or more years
+#
+# dat_alpha_all_3 %>%
+#   group_by(Ecoregion_NARS) %>%
+#   summarize(tal = length(unique(Year))) %>%
+#   ungroup()
+# calculate alpha.bar (mean richness among sites within an ecoregion and year)
+dat_alpha.bar_all_3 <- dat_alpha_all_3 %>%
+# for each Ecoregion_NARS & Year combo, take the mean alpha value
+group_by(Ecoregion_NARS, Year, n.sites) %>%
+summarize(alpha.bar = mean(alpha)) %>%
+ungroup()
+# calculate gamma (total number of genera within an ecoregion and year)
+dat_gamma_all_3 <- dat_alpha_all_3 %>%
+# pivot datset long across the genera columns
+pivot_longer(cols = 35:ncol(dat),
+names_to = "genera",
+values_to = "presence") %>%
+# remove genera not present at sites
+filter(presence == 1) %>%
+# for each Ecoregion_NARS & Year combo, count number of genera
+group_by(Ecoregion_NARS, Year, n.sites) %>%
+summarize(gamma = length(unique(genera))) %>%
+ungroup()
+# calculate asymptotic gamma based on approach by A. Chow
+# create list of genera x site incidence matrices for each ecoregion-year combination
+er_yr_list_3 <- split(dat_alpha_all_3, dat_alpha_all_3$EcoRegion_Year)
+# for each ecoregion-year dataset
+for( i in 1:length(er_yr_list_3)){
+# select just the genera columns
+# ensure class is a dataframe
+# transpose so genera are along the vertical axis and sites are along the horizontal
+er_yr_list_3[[i]] <- t(data.frame(
+er_yr_list_3[[i]][,35:ncol(dat)]
+))
+}
+# generate gammas via rarefication and asymptotic estimation
+x_3 <- iNEXT(er_yr_list_3, q= 0, datatype = "incidence_raw",
+size = c(0,min(dat_alpha_all_3$n.sites)))
+dat_asyp_gamma_3 <- x_3$AsyEst %>%
+filter(Diversity == "Species richness") %>%
+select(EcoRegion_Year = Site,
+obs.gamma = Observed,
+asyp.gamma = Estimator,
+asyp.gamma.se = s.e.)
+dat_intrp_gamma_3 <- data.frame(EcoRegion_Year = rep(NA, nrow(dat_gamma_all_3)),
+intrp.gamma = rep(NA, nrow(dat_gamma_all_3)))
+for (i in 1:length(x_3$iNextEst)) {
+dat_intrp_gamma_3$EcoRegion_Year[i] = names(x_3$iNextEst[i])
+dat_intrp_gamma_3$intrp.gamma[i] = x_3$iNextEst[[i]][2,4]
+}
+#join datasets and calculate multiplicative & proportional beta
+dat_div_all_3 <- dat_alpha.bar_all_3 %>%
+mutate(EcoRegion_Year = paste(Ecoregion_NARS,
+Year, sep = "_")) %>%
+left_join(dat_asyp_gamma_3, by = "EcoRegion_Year") %>%
+left_join(dat_intrp_gamma_3, by = "EcoRegion_Year") %>%
+left_join(dat_gamma_all_3 %>% select(-n.sites), by=c("Ecoregion_NARS",
+"Year")) %>%
+mutate(mult.beta.asyp = asyp.gamma/alpha.bar,
+prop.beta.asyp = 1 - (alpha.bar / asyp.gamma),
+mult.beta.intrp = intrp.gamma/alpha.bar,
+prop.beta.intrp = 1 - (alpha.bar / intrp.gamma)) %>%
+mutate(mult.beta = gamma/alpha.bar,
+prop.beta = 1 - (alpha.bar / gamma),
+norm.beta = (mult.beta - 1)/ (n.sites-1))
+# NAWQA
+# calcualte diversity metrics with sites that are sampled in 3 or more years
+dat_alpha_NAWQA_3 <- dat_alpha_NAWQA %>%
+filter(n >= 3) %>%
+# remove EcoRegion - Year combos where only 1 site was measured
+mutate(EcoRegion_Year = paste(Ecoregion_NARS, Year, sep = "_"))
+dat_alpha_NAWQA_3 <- dat_alpha_NAWQA_3 %>%
+filter(EcoRegion_Year %in% (dat_alpha_NAWQA_3 %>%
+group_by(EcoRegion_Year) %>%
+summarize(n = n()) %>%
+ungroup() %>%
+filter(n > 1))$EcoRegion_Year)
+# remove EcoRegions that are only represented in one year across the dataset
+# count numer of observations within EcoRegion - Year combos
+# all ecoregions are measured in 7 or more years
+#
+# dat_alpha_NAWQA_3 %>%
+#   group_by(Ecoregion_NARS) %>%
+#   summarize(tal = length(unique(Year))) %>%
+#   ungroup()
+# calculate alpha.bar (mean richness among sites within an ecoregion and year)
+dat_alpha.bar_NAWQA_3 <- dat_alpha_NAWQA_3 %>%
+# for each Ecoregion_NARS & Year combo, take the mean alpha value
+group_by(Ecoregion_NARS, Year, n.sites) %>%
+summarize(alpha.bar = mean(alpha)) %>%
+ungroup()
+# calculate gamma (total number of genera within an ecoregion and year)
+dat_gamma_NAWQA_3 <- dat_alpha_NAWQA_3 %>%
+# pivot datset long across the genera columns
+pivot_longer(cols = 35:ncol(dat),
+names_to = "genera",
+values_to = "presence") %>%
+# remove genera not present at sites
+filter(presence == 1) %>%
+# for each Ecoregion_NARS & Year combo, count number of genera
+group_by(Ecoregion_NARS, Year, n.sites) %>%
+summarize(gamma = length(unique(genera))) %>%
+ungroup()
+# calculate asymptotic gamma based on approach by A. Chow
+# create list of genera x site incidence matrices for each ecoregion-year combination
+er_yr_list_NAWQA_3 <- split(dat_alpha_NAWQA_3, dat_alpha_NAWQA_3$EcoRegion_Year)
+# for each ecoregion-year dataset
+for( i in 1:length(er_yr_list_NAWQA_3)){
+# select just the genera columns
+# ensure class is a dataframe
+# transpose so genera are along the vertical axis and sites are along the horizontal
+er_yr_list_NAWQA_3[[i]] <- t(data.frame(
+er_yr_list_NAWQA_3[[i]][,35:ncol(dat)]
+))
+}
+# generate gammas via rarefication and asymptotic estimation
+x_NAWQA_3 <- iNEXT(er_yr_list_NAWQA_3, q= 0, datatype = "incidence_raw",
+size = c(0,min(dat_alpha_NAWQA_3$n.sites)))
+dat_asyp_gamma_NAWQA_3 <- x_NAWQA_3$AsyEst %>%
+filter(Diversity == "Species richness") %>%
+select(EcoRegion_Year = Site,
+obs.gamma = Observed,
+asyp.gamma = Estimator,
+asyp.gamma.se = s.e.)
+dat_intrp_gamma_NAWQA_3 <- data.frame(EcoRegion_Year = rep(NA, nrow(dat_gamma_NAWQA_3)),
+intrp.gamma = rep(NA, nrow(dat_gamma_NAWQA_3)))
+for (i in 1:length(x_NAWQA_3$iNextEst)) {
+dat_intrp_gamma_NAWQA_3$EcoRegion_Year[i] = names(x_NAWQA_3$iNextEst[i])
+dat_intrp_gamma_NAWQA_3$intrp.gamma[i] = x_NAWQA_3$iNextEst[[i]][2,4]
+}
+#join datasets and calculate multiplicative & proportional beta
+dat_div_NAWQA_3 <- dat_alpha.bar_NAWQA_3 %>%
+mutate(EcoRegion_Year = paste(Ecoregion_NARS,
+Year, sep = "_")) %>%
+left_join(dat_asyp_gamma_NAWQA_3, by = "EcoRegion_Year") %>%
+left_join(dat_intrp_gamma, by = "EcoRegion_Year") %>%
+left_join(dat_gamma_NAWQA_3 %>% select(-n.sites), by=c("Ecoregion_NARS", "Year")) %>%
+mutate(mult.beta.asyp = asyp.gamma/alpha.bar,
+prop.beta.asyp = 1 - (alpha.bar / asyp.gamma),
+mult.beta.intrp = intrp.gamma/alpha.bar,
+prop.beta.intrp = 1 - (alpha.bar / intrp.gamma)) %>%
+mutate(mult.beta = gamma/alpha.bar,
+prop.beta = 1 - (alpha.bar / gamma),
+norm.beta = (mult.beta - 1)/ (n.sites-1))
+# NRSA # AS OF 2 MAY 2021, few NRSA sites that have been sampled in 3 years or more.
+# So, no longer a viable dataset to use.
+# calcualte diversity metrics with sites that are sampled in 3 or more years
+dat_alpha_NRSA_3 <- dat_alpha_NRSA %>%
+filter(n >= 3) %>%
+# remove EcoRegion - Year combos where only 1 site was measured
+mutate(EcoRegion_Year = paste(Ecoregion_NARS, Year, sep = "_"))
+# dat_alpha_NRSA_3 <- dat_alpha_NRSA_3 %>%
+#   filter(EcoRegion_Year %in% (dat_alpha_NRSA_3 %>%
+#                                 group_by(EcoRegion_Year) %>%
+#                                 summarize(n = n()) %>%
+#                                 ungroup() %>%
+#                                 filter(n > 1))$EcoRegion_Year)
+#
+# # remove EcoRegions that are only represented in one year across the dataset
+# # count numer of observations within EcoRegion - Year combos
+# # all ecoregions are measured in 7 or more years
+# #
+# # dat_alpha_NRSA_3 %>%
+# #   group_by(Ecoregion_NARS) %>%
+# #   summarize(tal = length(unique(Year))) %>%
+# #   ungroup()
+#
+# # calculate alpha.bar (mean richness among sites within an ecoregion and year)
+# dat_alpha.bar_NRSA_3 <- dat_alpha_NRSA_3 %>%
+#   # for each Ecoregion_NARS & Year combo, take the mean alpha value
+#   group_by(Ecoregion_NARS, Year, n.sites) %>%
+#   summarize(alpha.bar = mean(alpha)) %>%
+#   ungroup()
+#
+# # calculate gamma (total number of genera within an ecoregion and year)
+# dat_gamma_NRSA_3 <- dat_alpha_NRSA_3 %>%
+#   # pivot datset long across the genera columns
+#   pivot_longer(cols = 35:ncol(dat),
+#                names_to = "genera",
+#                values_to = "presence") %>%
+#   # remove genera not present at sites
+#   filter(presence == 1) %>%
+#   # for each Ecoregion_NARS & Year combo, count number of genera
+#   group_by(Ecoregion_NARS, Year, n.sites) %>%
+#   summarize(gamma = length(unique(genera))) %>%
+#   ungroup()
+#
+# # calculate asymptotic gamma based on approach by A. Chow
+#
+# # create list of genera x site incidence matrices for each ecoregion-year combination
+# er_yr_list_NRSA_3 <- split(dat_alpha_NRSA_3, dat_alpha_NRSA_3$EcoRegion_Year)
+#
+# # for each ecoregion-year dataset
+# for( i in 1:length(er_yr_list_NRSA_3)){
+#   # select just the genera columns
+#   # ensure class is a dataframe
+#   # transpose so genera are along the vertical axis and sites are along the horizontal
+#   er_yr_list_NRSA_3[[i]] <- t(data.frame(
+#     er_yr_list_NRSA_3[[i]][,35:ncol(dat)]
+#   ))
+# }
+#
+# # generate gammas via rarefication and asymptotic estimation
+# x_NRSA_3 <- iNEXT(er_yr_list_NRSA_3, q= 0, datatype = "incidence_raw",
+#                   size = c(0,min(dat_alpha_NRSA_3$n.sites)))
+#
+# dat_asyp_gamma_NRSA_3 <- x_NRSA_3$AsyEst %>%
+#   filter(Diversity == "Species richness") %>%
+#   select(EcoRegion_Year = Site,
+#          obs.gamma = Observed,
+#          asyp.gamma = Estimator,
+#          asyp.gamma.se = s.e.)
+#
+# dat_intrp_gamma_NRSA_3 <- data.frame(EcoRegion_Year = rep(NA, nrow(dat_gamma_NRSA_3)),
+#                               intrp.gamma = rep(NA, nrow(dat_gamma_NRSA_3)))
+#
+# for (i in 1:length(x_NRSA_3$iNextEst)) {
+#   dat_intrp_gamma_NRSA_3$EcoRegion_Year[i] = names(x_NRSA_3$iNextEst[i])
+#   dat_intrp_gamma_NRSA_3$intrp.gamma[i] = x_NRSA_3$iNextEst[[i]][2,4]
+# }
+#
+# #join datasets and calculate multiplicative & proportional beta
+# dat_div_NRSA_3 <- dat_alpha.bar_NRSA_3 %>%
+#   mutate(EcoRegion_Year = paste(Ecoregion_NARS,
+#                                 Year, sep = "_")) %>%
+#   left_join(dat_asyp_gamma_NRSA_3, by = "EcoRegion_Year") %>%
+#   left_join(dat_intrp_gamma, by = "EcoRegion_Year") %>%
+#   left_join(dat_gamma_NRSA_3 %>% select(-n.sites), by=c("Ecoregion_NARS", "Year")) %>%
+#   mutate(mult.beta.asyp = asyp.gamma/alpha.bar,
+#          prop.beta.asyp = 1 - (alpha.bar / asyp.gamma),
+#          mult.beta.intrp = intrp.gamma/alpha.bar,
+#          prop.beta.intrp = 1 - (alpha.bar / intrp.gamma)) %>%
+#   mutate(mult.beta = gamma/alpha.bar,
+#          prop.beta = 1 - (alpha.bar / gamma),
+#          norm.beta = (mult.beta - 1)/ (n.sites-1))
+#read out the final datasets for analyses
+write.csv(dat_alpha_all, "dat_alpha_all.csv")
+write.csv(dat_div_all, "dat_div_all.csv")
+write.csv(dat_alpha_NAWQA, "dat_alpha_NAWQA.csv")
+write.csv(dat_div_NAWQA, "dat_div_NAWQA.csv")
+write.csv(dat_alpha_NRSA, "dat_alpha_NRSA.csv")
+write.csv(dat_div_NRSA, "dat_div_NRSA.csv")
+write.csv(dat_alpha_all_3, "dat_alpha_all_3.csv")
+write.csv(dat_div_all_3, "dat_div_all_3.csv")
+write.csv(dat_alpha_NAWQA_3, "dat_alpha_NAWQA_3.csv")
+write.csv(dat_div_NAWQA_3, "dat_div_NAWQA_3.csv")
+write.csv(dat_alpha_NRSA_3, "dat_alpha_NRSA_3.csv")
+write.csv(dat_div_NRSA_3, "dat_div_NRSA_3.csv")
+?getInvertData
+# generate initial dataset
+dat <- getInvertData(
+dataType = "occur",
+taxonLevel = "Genus",
+taxonFix = "lump",
+program = "National Water Quality Assessment",
+lifestage = FALSE,
+abunMeasure = "abundance",
+rarefy = TRUE,
+NRSA = TRUE,
+seed = 101421)
+dat_alpha_all <- dat %>%
+# exclude sites in Alaska and Hawaii
+filter(!(StateFIPSCode %in% c("02", "15"))) %>%
+# add a column for NRSA or NAWQA data
+mutate(Program = ifelse(ProjectLabel %in% c("NRSA0809","NRSA1314","NRSA1819","WSA"),
+"NRSA",
+"NAWQA")) %>%
+# exclude sites collected after 2017
+filter(!(CollectionYear >= 2017 & Program == "NAWQA")) %>%
+# create column for site-level richness
+rowwise() %>%
+mutate(alpha = sum(c_across(35:ncol(dat))>0)) %>%
+ungroup() %>%
+# make a year column - 1993 = 1
+mutate(Year = CollectionYear - min(CollectionYear) + 1) %>%
+# make a "continuous" year column e.g. 1993 Jan 1 = 1 + 1/365
+# this could be used in richness analyses
+mutate(YearCont = Year + (CollectionDayOfYear / 365)) %>%
+# create column that is number of years a site was sampled
+group_by(SiteNumber) %>%
+mutate(n = length(unique(Year))) %>%
+ungroup() %>%
+# add ecoregion data for NAWQA sites
+left_join(site.info, by = "SiteNumber") %>%
+# drop sites if no lat/long provided
+filter(is.na(Latitude_dd) == F)
+# make one column for ecoregions for NAWQA & NRSA
+# NRSA data already contains EcoRegions in "AG_ECO9"
+dat_alpha_all$Ecoregion_NARS <- ifelse(is.na(dat_alpha_all$Ecoregion_NARS),
+dat_alpha_all$AG_ECO9,
+dat_alpha_all$Ecoregion_NARS)
+# remove EcoRegion - Year combos where only 1 site was measured
+dat_alpha_all <- dat_alpha_all %>%
+mutate(EcoRegion_Year = paste(Ecoregion_NARS, Year, sep = "_"))
+dat_alpha_all <- dat_alpha_all %>%
+filter(EcoRegion_Year %in% (dat_alpha_all %>%
+group_by(EcoRegion_Year) %>%
+summarize(n = n()) %>%
+ungroup() %>%
+filter(n > 1))$EcoRegion_Year) %>%
+# add column for number of sites sampled in each EcoRegion - Year combination
+# used in weights statement in statistical models
+group_by(EcoRegion_Year) %>%
+mutate(n.sites = n()) %>%
+ungroup()
+# split dataset into NAWQA and NRSA
+dat_alpha_NAWQA <- dat_alpha_all %>% filter(Program == "NAWQA")
+# remove EcoRegion - Year combos where only 1 site was measured
+dat_alpha_NAWQA <- dat_alpha_NAWQA %>%
+filter(EcoRegion_Year %in% (dat_alpha_NAWQA %>%
+group_by(EcoRegion_Year) %>%
+summarize(n = n()) %>%
+ungroup() %>%
+filter(n > 1))$EcoRegion_Year) %>%
+# add column for number of sites sampled in each EcoRegion - Year combination
+# used in weights statement in statistical models
+group_by(EcoRegion_Year) %>%
+mutate(n.sites = n()) %>%
+ungroup()
+dat_alpha_NRSA <- dat_alpha_all %>% filter(Program == "NRSA")
+# remove EcoRegion - Year combos where only 1 site was measured
+dat_alpha_NRSA <- dat_alpha_NRSA %>%
+filter(EcoRegion_Year %in% (dat_alpha_NRSA %>%
+group_by(EcoRegion_Year) %>%
+summarize(n = n()) %>%
+ungroup() %>%
+filter(n > 1))$EcoRegion_Year) %>%
+# add column for number of sites sampled in each EcoRegion - Year combination
+# used in weights statement in statistical models
+group_by(EcoRegion_Year) %>%
+mutate(n.sites = n()) %>%
+ungroup()
+# calculate alpha.bar (mean richness among sites within an ecoregion and year)
+dat_alpha.bar <- dat_alpha_all %>%
+# for each Ecoregion_NARS & Year combo, take the mean alpha value and
+group_by(Ecoregion_NARS, Year, n.sites) %>%
+summarize(alpha.bar = mean(alpha)) %>%
+ungroup()
+# calculate gamma (total number of genera within an ecoregion and year)
+dat_gamma <- dat_alpha_all %>%
+# pivot datset long across the genera columns
+pivot_longer(cols = 35:ncol(dat),
+names_to = "genera",
+values_to = "presence") %>%
+# remove genera not present at sites
+filter(presence == 1) %>%
+# for each Ecoregion_NARS & Year combo, count number of genera
+group_by(Ecoregion_NARS, Year, n.sites) %>%
+summarize(gamma = length(unique(genera))) %>%
+ungroup()
+# what is the minimum number of sites within an ecoregion-year?
+min(dat_alpha_all$n.sites)
+# create list of genera x site incidence matrices for each ecoregion-year combination
+er_yr_list <- split(dat_alpha_all, dat_alpha_all$EcoRegion_Year)
+# for each ecoregion-year dataset
+for( i in 1:length(er_yr_list)){
+# select just the genera columns
+# ensure class is a dataframe
+# transpose so genera are along the vertical axis and sites are along the horizontal
+er_yr_list[[i]] <- t(data.frame(
+er_yr_list[[i]][,35:ncol(dat)]
+))
+}
+colnames(dat_alpha_all)
+colnames(dat_alpha_all)
+colnames(dat_alpha_all)[1:100]
+View(dat_alpha_all)
+View(dat)
+installed.packages()
+update.packages(checkBuilt=TRUE)
+update.packages(checkBuilt=TRUE)
+library(StreamData)
+library(tidyverse)
+library(iNEXT)
+# read in Devin generated ecoregion table (includes EPA US Level III Ecoregions
+# and EPA NARS Level III Ecoregions)
+ecoregions <- read.csv("EcoRegionGroups.csv",
+header = T,
+stringsAsFactors = FALSE)
+# read in site info - this will be used to join ecoregions contains
+# EPA US Level III Ecoregions for each site
+site.info <- read.csv("20201217.0749.SiteInfo.csv",
+header = T,
+stringsAsFactors = FALSE,
+colClasses = c("SiteNumber" = "character")) %>%
+select(SiteNumber, Ecoregion_US_L3CODE) %>%
+#join NARS
+left_join(ecoregions, by = "Ecoregion_US_L3CODE") %>%
+select(SiteNumber, Ecoregion_NARS)
+# generate initial dataset
+dat <- getInvertData(
+dataType = "occur",
+taxonLevel = "Genus",
+taxonFix = "lump",
+program = "National Water Quality Assessment",
+lifestage = FALSE,
+abunMeasure = "abundance",
+rarefy = TRUE,
+NRSA = TRUE,
+seed = 101421)
+library(devtools)
+devtools::install_github("StreamData/StreamData",
+auth_token = "2e5d20415a4fa2c4192c28fa6688a127ce365279",
+force = TRUE,
+build_vignette = TRUE)
+library(devtools)
+devtools::install_github("StreamData/StreamData",
+auth_token = "2e5d20415a4fa2c4192c28fa6688a127ce365279",
+force = TRUE,
+build_vignette = TRUE)
+library(devtools)
+devtools::install_github("StreamData/StreamData",
+auth_token = "2e5d20415a4fa2c4192c28fa6688a127ce365279",
+force = TRUE,
+build_vignette = TRUE)
+install.packages("utils")
+install.packages("utils")
+install.packages("utils")
+install.packages("utils")
+install.packages("devtools")
+install.packages("remotes")
+library(devtools)
+devtools::install_github("StreamData/StreamData",
+auth_token = "2e5d20415a4fa2c4192c28fa6688a127ce365279",
+force = TRUE,
+build_vignette = TRUE)
+devtools::install_github("StreamData/StreamData",
+auth_token = "2e5d20415a4fa2c4192c28fa6688a127ce365279",
+force = TRUE,
+build_vignette = TRUE)
+library(StreamData)
+traceback()
+devtools::install_github("StreamData/StreamData",
+auth_token = "2e5d20415a4fa2c4192c28fa6688a127ce365279",
+force = TRUE,
+build_vignette = TRUE)
+options(download.file.method = "libcurl")
+devtools::install_github("StreamData/StreamData",
+auth_token = "2e5d20415a4fa2c4192c28fa6688a127ce365279",
+force = TRUE,
+build_vignette = TRUE)
+library(remotes)
+devtools::install_github("AnneChao/iNEXT")
+devtools::install_github("StreamData/StreamData",
+auth_token = "2e5d20415a4fa2c4192c28fa6688a127ce365279",
+build_vignette = TRUE)
+devtools::install_github("StreamData/StreamData",
+auth_token = "2e5d20415a4fa2c4192c28fa6688a127ce365279",
+build_vignette = TRUE)
+traceback()
+devtools::install_github("StreamData/StreamData",
+auth_token = "1bd484e1ac7e375e06a26cdf48d0a27e02bf9023",
+build_vignette = TRUE)
+install.packages(c("e1071", "sf", "spdep"))
+library(devtools)
+devtools::install_github("StreamData/StreamData",
+auth_token = "2e5d20415a4fa2c4192c28fa6688a127ce365279",
+build_vignette = TRUE)
+options(download.file.method = "libcurl")
+devtools::install_github("StreamData/StreamData",
+auth_token = "2e5d20415a4fa2c4192c28fa6688a127ce365279",
+build_vignette = TRUE)
+install.packages("devtools")

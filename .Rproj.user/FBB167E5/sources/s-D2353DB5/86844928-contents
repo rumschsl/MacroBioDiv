@@ -1,0 +1,34 @@
+# old token: 2e5d20415a4fa2c4192c28fa6688a127ce365279
+
+# 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
+
+#  (libcurl, wget, or curl). E.g. devtools::install_github("XXX", method = libcurl)
+
+library(devtools)
+options(download.file.method = "curl")
+devtools::install_github("StreamData/StreamData",
+                         auth_token = "2e5d20415a4fa2c4192c28fa6688a127ce365279",
+                         build_vignette = TRUE,
+                         force = TRUE)
+
+
+devtools::install_github("StreamData/StreamData",
+                         auth_token = "1bd484e1ac7e375e06a26cdf48d0a27e02bf9023",
+                         build_vignette = TRUE)
+
+
+vignette("Metadata")
+
+?StreamData
+
+getAlgaeData(
+  algType = "peri",
+  dataType = "abun",
+  taxonLevel = "Family",
+  program = "National Water Quality Assessment"
+)
+
+getInvertData(taxonLevel = "Family")
+?StreamData
+getFishData(taxonLevel = "Family")
+

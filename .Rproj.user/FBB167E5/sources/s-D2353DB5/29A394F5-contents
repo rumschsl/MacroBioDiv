@@ -1,0 +1,183 @@
+# 21 May 2021
+# Samantha Rumschlag
+# Visualize traits of NAWQA & NRSA datasets
+
+library(tidyverse)
+library(sf)
+
+# read in datasets
+# contains alpha at all sites 
+dat_alpha_all <- read.csv("dat_alpha_all.csv",
+                          header = T,
+                          stringsAsFactors = F) 
+
+# collapse dataset into sites only
+dat_site_all<- dat_alpha_all %>%
+  group_by(SiteNumber) %>%
+  slice(1)
+
+# data with sites sampled in 3 or more years
+dat_alpha_all_3 <- read.csv("dat_alpha_all_3.csv",
+                          header = T,
+                          stringsAsFactors = F) 
+
+# collapse dataset into sites only
+dat_site_all_3<- dat_alpha_all_3 %>%
+  group_by(SiteNumber) %>%
+  slice(1)
+
+# read in shapefiles for ecoregions
+ecor <- st_read("./Aggr_Ecoregions_2015.shp") 
+# change projection to NAD84 to match sites
+ecor <- st_transform(ecor, "+init=epsg:4269")
+# reduce size of shapefile
+ecor <- rmapshaper::ms_simplify(ecor, keep = 0.01, keep_shapes = T)
+
+# map of NAWQA versus NRSA
+# X11(type = "cairo")
+f1 <- ggplot() +
+  geom_sf(data = ecor,
+          aes(color = WSA9),
+          alpha = 0.2) +  
+  geom_point(data = dat_site_all,
+             aes(x = Longitude_dd,
+             y = Latitude_dd,
+             size = n),
+             shape = 21,
+             alpha = 0.4) +
+  facet_wrap(~Program) +
+  xlab("") +
+  ylab("") +
+  theme(legend.position="top",
+        legend.title = element_blank())
+
+ggsave("./figures_visualize_data/f1.png", f1, dpi = 200, height = 5, width = 10)
+
+# same plot as above with 3 or more dataset
+f2 <- ggplot() +
+  geom_sf(data = ecor,
+          aes(color = WSA9),
+          alpha = 0.2) +  
+  geom_point(data = dat_site_all_3,
+             aes(x = Longitude_dd,
+                 y = Latitude_dd,
+                 size = n),
+             shape = 21,
+             alpha = 0.4) +
+  facet_wrap(~Program) +
+  xlab("") +
+  ylab("") +
+  theme(legend.position="top",
+        legend.title = element_blank())
+
+ggsave("./figures_visualize_data/f2.png", f2, dpi = 200, height = 5, width = 10)
+
+# number of sites of each program across years
+f3 <- ggplot(data = dat_alpha_all, aes(x = CollectionYear,
+                                 y = alpha,
+                                 fill = Program)) +
+  facet_wrap(~Program) +
+  ggbeeswarm::geom_quasirandom(shape = 21, alpha = 0.4) +
+  scale_x_continuous(breaks = 1993:2019) +
+  theme(legend.position="top",
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave("./figures_visualize_data/f3.png", f3, dpi = 200, height = 5, width = 10)
+
+f4 <- ggplot(data = dat_alpha_all_3, aes(x = CollectionYear,
+                                       y = alpha,
+                                       fill = Program)) +
+  facet_wrap(~Program) +
+  ggbeeswarm::geom_quasirandom(shape = 21, alpha = 0.4) +
+  scale_x_continuous(breaks = 1993:2019) +
+  theme(legend.position="top",
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave("./figures_visualize_data/f4.png", f4, dpi = 200, height = 5, width = 10)
+
+# show sites across years
+# X11(type = "cairo")
+f5 <- ggplot() +
+  geom_sf(data = ecor,
+          color = "gray",
+          alpha = 0.1) +  
+  geom_point(data = dat_alpha_all,
+             aes(x = Longitude_dd,
+                 y = Latitude_dd,
+             color = Program),
+             shape = 21) +
+  facet_wrap(~CollectionYear) +
+  xlab("") +
+  ylab("") +
+  theme(legend.position="top",
+        legend.title = element_blank())
+
+ggsave("./figures_visualize_data/f5.png", f5, dpi = 200, height = 8, width = 12)
+
+
+f6 <- ggplot() +
+  geom_sf(data = ecor,
+          color = "gray",
+          alpha = 0.1) +  
+  geom_point(data = dat_alpha_all_3,
+             aes(x = Longitude_dd,
+                 y = Latitude_dd,
+                 color = Program),
+             shape = 21) +
+  facet_wrap(~CollectionYear) +
+  xlab("") +
+  ylab("") +
+  theme(legend.position="top",
+        legend.title = element_blank())
+
+ggsave("./figures_visualize_data/f6.png", f6, dpi = 200, height = 8, width = 12)
+
+# Does the average number of sites within an ecoregion change across time?
+dat <- dat_alpha_all_3 %>% 
+  filter(Program == "NAWQA") %>%
+  group_by(Ecoregion_NARS, CollectionYear) %>%
+  summarize(count = n()) %>%
+  ungroup()
+
+m1 <- glm(count ~ Ecoregion_NARS*CollectionYear, 
+          family = "poisson",
+          data = dat)
+
+car::Anova(m1, type="III")
+# Analysis of Deviance Table (Type III tests)
+#
+# Response: count
+#                               LR Chisq Df Pr(>Chisq)  
+# Ecoregion_NARS                 17.8816  8    0.02213 *
+# CollectionYear                  5.6802  1    0.01716 *
+# Ecoregion_NARS:CollectionYear  17.9605  8    0.02152 *
+
+# On average there are fewer sites per ecoregion than at the beginning
+sjPlot::plot_model(m1, 
+                   type = "pred", 
+                   terms = c("CollectionYear","Ecoregion_NARS"),
+                   ci.lvl = NA) +
+  ylab("Number of Sites Per Ecoregion")
+
+#### This trend is MUCH worse when using ALL data. 
+
+## 
+## ANALYSIS OF LANDUSE COVARIATES
+##
+
+stream_cat_dat <- read.csv("streamcat-usgs-nawqa-join.csv", header = T, stringsAsFactors = F)
+
+site.info <- read.csv("20201217.0749.SiteInfo.csv", 
+                      header=T, 
+                      stringsAsFactors = F,
+                      colClasses = c("SiteNumber" = "character")) %>%
+  select(SiteNumber, DrainageArea_mi2)
+
+# How does drainge area of sites change through time?
+dat_size <- dat_alpha_all_3 %>% 
+  filter(Program == "NAWQA") %>%
+  left_join(site.info, by = "SiteNumber")
+
+m2 <- lm(DrainageArea_mi2 ~ Ecoregion_NARS*CollectionYear, 
+         data = dat_size))
+
