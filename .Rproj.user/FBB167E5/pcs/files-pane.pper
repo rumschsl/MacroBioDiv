@@ -1,9 +1,3 @@
-{
-    "path" : "~/Documents/Manuscripts/DevinUSGSDiversity/MacroBioDiv",
-    "sortOrder" : [
-        {
-            "ascending" : true,
-            "columnIndex" : 2
-        }
-    ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:ae65ddda11d317228946ab5b43604210f3b3a5ec3055c4b4736ab36c57a19667
+size 178
