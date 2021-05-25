@@ -1,3 +1,5 @@
+ecoregionshapes.csv filter=lfs diff=lfs merge=lfs -text
+Aggr_Ecoregions_2015.shp filter=lfs diff=lfs merge=lfs -text
 *.DS_Store filter=lfs diff=lfs merge=lfs -text
 *.Rhistory filter=lfs diff=lfs merge=lfs -text
 *.pper filter=lfs diff=lfs merge=lfs -text
